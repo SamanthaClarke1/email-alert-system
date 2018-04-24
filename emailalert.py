@@ -4,15 +4,49 @@ import json
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import datetime
-import socket
+import os
 
-opts, names, emails, template, s = ""
+opts, names, emails, template, s, services = ""
 
 opts = get_settings("options.json")
 names, emails = get_contacts("contacts.txt")
 template = read_template("alert.txt")
+services = get_services("services.txt")
 
 setup_smtp(opts)
+
+def tick():
+
+
+def send_emails(responses, presponses):
+	for response in responses:
+		for presponse in presponses:
+			if response == presponse:
+				continue
+		if(response[1] != 0):
+			error = "Host not found."
+			if(reponse[1] == 256):
+				error = "Host timed out."
+
+def get_responses(services):
+	responses = []
+	
+	for service in services:
+		responses.append([service, check_service_online(service)])
+
+	return responses
+
+def get_services(filename):
+	services = []
+	with open(filename, mode='r', encoding='utf-8') as services_file:
+		for service in services_file:
+			tservice = {}
+			if(service[0] != "#"):
+				tservice.name = service.split(" | ")[0]
+				tservice.ip = service.split(" | ")[1]
+				tservice.threat_level = service.split(" | ")[2]
+			services.append(tservice)
+	return services
 
 def send_alert(s, alert, status, names, emails, template, opts):
 	for name, email in zip(names, emails):
@@ -60,26 +94,10 @@ def read_template(filename):
 	return Template(template)
 
 
-def check_service_online(opts):
-    captive_dns_addr = ""
-    host_addr = ""
+def check_service_online(service):
+	param = '-n' if system_name().lower()=='windows' else '-c'
+	res = os.system("ping " + param + " 2 " + service.ip)
+	
+	return res
 
-    try:
-        captive_dns_addr = socket.gethostbyname("BlahThisDomaynDontExist22.com")
-    except:
-        pass
 
-    try:
-        host_addr = socket.gethostbyname(opts.SERVER.ADDR)
-
-        if (captive_dns_addr == host_addr):
-            return False
-
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(1)
-        s.connect((opts.SERVER.ADDR, opts.SERVER.PORT))
-        s.close()
-    except:
-        return False
-
-    return True
