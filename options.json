@@ -1,10 +1,10 @@
 {
 	"SERVER": {
-		"ADDR": "my_host_addr",
-		"PORT": "my_host_port"
+		"ADDR": "my_host_addr eg. smtp.gmail.com",
+		"PORT": "my_host_port eg. 587"
 	},
 	"LOGIN": {
-		"USER": "my_email_name",
-		"PASS": "my_email_pass"
+		"USER": "my_email_name eg. john.doe@gmail.com",
+		"PASS": "my_email_pass eg. supersecretpassword82"
 	}
 }
