@@ -17,21 +17,22 @@ def send_emails(responses):
 	
 	status = "Things seem to have improved."
 	if(len(responses) > len(presponses)):
-		status = "Things seem to have gotten worse."
+		status = "Things seem to have broken / gone offline / idk im just a robot."
 	
 	responses = sorted(responses, key=get_response_threat_level, reverse=True)
 
 	for response in responses:
 		if(response[1] != 0):
-			error = str(response[0]['name']) + " (" + str(reponse[0]['ip']) + ") could not be found."
-			if(reponse[1] == 256):
-				error = str(response[0]['name']) + " (" + str(reponse[0]['ip']) + ") timed out."
+			error = str(response[0]['name']) + " (" + str(response[0]['ip']) + ")   - -  could not be found."
+			if(response[1] == 256):
+				error = str(response[0]['name']) + " (" + str(response[0]['ip']) + ")    - -   timed out."
 			
-			nerror += error
+			nerror += error + "\n"
 	
+	send_alert(nerror, status)
 
 def get_response_threat_level(r):
-	return r[2]
+	return r[0]['threat_level']
 
 def get_responses(services):
 	responses = []
@@ -56,27 +57,27 @@ def get_services(filename):
 	return services
 
 def send_alert(alert, status):
-	for name, email in zip(names, emails):
-		msg = MIMEMultipart()
-		
-		now = datetime.datetime.now()
-		message = template.substitute(PERSON_NAME=name.title(), STATUS=status, ERROR=alert, ERROR_DATE=now.strftime("%d/%m/%Y %H:%M"))
+	now = datetime.datetime.now()
+	message = template.substitute(PERSON_NAME="everybody".title(), STATUS=status, ERROR=alert, ERROR_DATE=now.strftime("%d/%m/%Y %H:%M"))
 
-		msg.From = opts['LOGIN']['USER']
-		msg.To = email
-		msg.Subject = "Automated Alert"
+	msg = MIMEText(message)
 
-		msg.attach(MIMEText(message, 'plain'))
+	msg.From = opts['LOGIN']['USER']
+	msg.To = ", ".join(emails)
+	msg.Subject = "Automated Alert"
 
-		s.send_message(msg)
+	print("Sending message: " + msg.as_string())
+	s.sendmail(opts['LOGIN']['USER'], emails, msg.as_string())
 
-		del msg # E F F I C I E N C Y
+	del msg # E F F I C I E N C Y
 
 def setup_smtp(opts):
 	print("\nConnected to: " + str(opts['SERVER']['ADDR']) + " on port " + str(opts['SERVER']['PORT']) + "\n")
 	srvr = smtplib.SMTP(host=str(opts['SERVER']['ADDR']), port=int(opts['SERVER']['PORT']))
 	srvr.starttls()
 	srvr.login(opts['LOGIN']['USER'], opts['LOGIN']['PASS'])
+
+	srvr.set_debuglevel(True)
 
 	return srvr
 
@@ -103,8 +104,9 @@ def read_template(filename):
 
 
 def check_service_online(service):
+	print("")
 	param = '-n' if platform.system().lower()=='windows' else '-c'
-	res = call(["ping", param, "2", service['ip']])
+	res = call(["ping", param, "1", service['ip']])
 
 	return res
 
@@ -129,13 +131,13 @@ names, emails = get_contacts("contacts.txt")
 template = read_template("alert.txt")
 services = get_services("services.txt")
 
-setup_smtp(opts)
+s = setup_smtp(opts)
 
 def tick(firsttime, presponses):
 	print("\nChecking everything.... \n")
 	
 	responses = get_responses(services)
-	threading.Timer(45.0, tick, args=(False,responses,)).start()
+	threading.Timer(30.0, tick, args=(False,responses,)).start()
 
 	if(not firsttime): # the first two times it runs are warm ups
 		lenresponses = len(responses)
@@ -143,10 +145,10 @@ def tick(firsttime, presponses):
 		lenpresponses = len(presponses)
 		errpresponses = get_amt_errors(presponses)
 		if(errresponses > 0):
-			print(str(lenresponses) + " out of " + errresponses + " errors! A difference of " + str(lenresponses - lenpresponses) + " errors.")
+			print("\n" + str(errresponses) + " out of " + str(lenresponses) + " possible errors! A difference of " + str(errresponses - errpresponses) + " errors.")
 		
 		if(errresponses != errpresponses):
-			print("Given the recent changes, I'll send emails.")		
+			print("Given the recent changes, I'll send emails.\n")		
 			send_emails(responses)
 	
 	presponses = responses
