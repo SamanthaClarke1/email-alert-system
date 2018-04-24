@@ -1,41 +1,16 @@
+#### ENTER IMPORTS ####
+
 import smtplib
 from string import Template
 import json
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import datetime
-import os
 import threading
+import platform
+from subprocess import call
 
-opts, names, emails, template, s, services = ""
-
-opts = get_settings("options.json")
-names, emails = get_contacts("contacts.txt")
-template = read_template("alert.txt")
-services = get_services("services.txt")
-
-setup_smtp(opts)
-
-def tick():
-	threading.Timer(45.0, tick).start()
-	
-	print("Checking everything.... ")
-	
-	responses = get_responses(services)
-
-	if(times_run > 1): # the first two times it runs are warm ups
-		lenresponses = len(responses), lenpresponses = len(presponses)
-		if(lenresponses > 0) print(lenresponses + " errors! A difference of " + (lenresponses - lenpresponses) + " errors.")
-		
-		if(lenresponses != lenpresponses):
-			print("Given the recent changes, I'll send emails.")		
-			send_emails(responses)
-
-	times_run += 1
-	presponses = responses
-	
-times_run = 0, presponses = [], responses = []
-tick()
+#### END IMPORTS, ENTER FUNCS ####
 
 def send_emails(responses):
 	nerror = ""
@@ -48,9 +23,9 @@ def send_emails(responses):
 
 	for response in responses:
 		if(response[1] != 0):
-			error = str(response[0]) + " (" + str(reponse[1]) + ") could not be found."
+			error = str(response[0]['name']) + " (" + str(reponse[0]['ip']) + ") could not be found."
 			if(reponse[1] == 256):
-				error = "Host timed out."
+				error = str(response[0]['name']) + " (" + str(reponse[0]['ip']) + ") timed out."
 			
 			nerror += error
 	
@@ -69,14 +44,14 @@ def get_responses(services):
 def get_services(filename):
 	services = []
 
-	with open(filename, mode='r', encoding='utf-8') as services_file:
+	with open(filename, mode='r') as services_file:
 		for service in services_file:
 			tservice = {}
 			if(service[0] != "#"):
-				tservice.name = service.split(" | ")[0]
-				tservice.ip = service.split(" | ")[1]
-				tservice.threat_level = service.split(" | ")[2]
-			services.append(tservice)
+				tservice['name'] = service.split(" | ")[0]
+				tservice['ip'] = service.split(" | ")[1]
+				tservice['threat_level'] = service.split(" | ")[2]
+				services.append(tservice)
 
 	return services
 
@@ -87,7 +62,7 @@ def send_alert(alert, status):
 		now = datetime.datetime.now()
 		message = template.substitute(PERSON_NAME=name.title(), STATUS=status, ERROR=alert, ERROR_DATE=now.strftime("%d/%m/%Y %H:%M"))
 
-		msg.From = opts.LOGIN.USER
+		msg.From = opts['LOGIN']['USER']
 		msg.To = email
 		msg.Subject = "Automated Alert"
 
@@ -98,38 +73,89 @@ def send_alert(alert, status):
 		del msg # E F F I C I E N C Y
 
 def setup_smtp(opts):
-	srvr = smtplib.SMTP(host=opts.SERVER.ADDR, port=opts.SERVER.PORT)
+	print("\nConnected to: " + str(opts['SERVER']['ADDR']) + " on port " + str(opts['SERVER']['PORT']) + "\n")
+	srvr = smtplib.SMTP(host=str(opts['SERVER']['ADDR']), port=int(opts['SERVER']['PORT']))
 	srvr.starttls()
-	srvr.login(opts.LOGIN.USER, opts.LOGIN.PASS)
+	srvr.login(opts['LOGIN']['USER'], opts['LOGIN']['PASS'])
 
 	return srvr
 
 def get_settings(filename):
 	data = {}
-	with open(filename, mode='r', encoding='utf-8') as options_file:
+	with open(filename, mode='r') as options_file:
 		data = json.load(options_file)
 	return data
 
 def get_contacts(filename):
 	names = []
 	emails = []
-	with open(filename, mode='r', encoding='utf-8') as contacts_file:
-		for contact in conctacts_file:
+	with open(filename, mode='r') as contacts_file:
+		for contact in contacts_file:
 			if(contact[0] != "#"):
 				names.append(contact.split(" | ")[0])
 				emails.append(contact.split(" | ")[1])
 	return names, emails
 
 def read_template(filename):
-	with open(filename, mode='r', encoding='utf-8') as template_file:
+	with open(filename, mode='r') as template_file:
 		template = template_file.read()
 	return Template(template)
 
 
 def check_service_online(service):
-	param = '-n' if system_name().lower()=='windows' else '-c'
-	res = os.system("ping " + param + " 2 " + service.ip)
-	
+	param = '-n' if platform.system().lower()=='windows' else '-c'
+	res = call(["ping", param, "2", service['ip']])
+
 	return res
 
+def get_amt_errors(responses):
+	total = 0
+	for res in responses:
+		if(res[1] != 0):
+			total += 1
+	return total
+
+#### END FUNCS, ENTER MAIN PROGRAM ####
+
+opts = ""
+names = ""
+emails = ""
+template = "" 
+s = "" 
+services = ""
+
+opts = get_settings("options.json")
+names, emails = get_contacts("contacts.txt")
+template = read_template("alert.txt")
+services = get_services("services.txt")
+
+setup_smtp(opts)
+
+def tick(firsttime, presponses):
+	print("\nChecking everything.... \n")
+	
+	responses = get_responses(services)
+	threading.Timer(45.0, tick, args=(False,responses,)).start()
+
+	if(not firsttime): # the first two times it runs are warm ups
+		lenresponses = len(responses)
+		errresponses = get_amt_errors(responses)
+		lenpresponses = len(presponses)
+		errpresponses = get_amt_errors(presponses)
+		if(errresponses > 0):
+			print(str(lenresponses) + " out of " + errresponses + " errors! A difference of " + str(lenresponses - lenpresponses) + " errors.")
+		
+		if(errresponses != errpresponses):
+			print("Given the recent changes, I'll send emails.")		
+			send_emails(responses)
+	
+	presponses = responses
+
+presponses = []
+responses = []
+tick(True, [])
+
+#### END MAIN PROGRAM ####
+
+####       EOF        ####
 
