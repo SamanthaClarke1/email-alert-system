@@ -1,0 +1,10 @@
+{
+	"SERVER": {
+		"ADDR": "my_host_addr",
+		"PORT": "my_host_port"
+	},
+	"LOGIN": {
+		"USER": "my_email_name",
+		"PASS": "my_email_pass"
+	}
+}
