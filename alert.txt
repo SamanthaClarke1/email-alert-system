@@ -1,7 +1,7 @@
 Hello ${PERSON_NAME}!
 ${STATUS}.
 
-What's wrong?
+Problems:
 ${ERROR}
 
 Automated error message at: ${ERROR_DATE}
