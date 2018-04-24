@@ -1,9 +1,9 @@
-Hello everybody!
-Bad news, stuff is broken.
+Hello ${PERSON_NAME}!
+${STATUS}.
 
 What's wrong?
 ${ERROR}
 
 Automated error message at: ${ERROR_DATE}
 
-- Best of luck, Shall Alert M.
+- Best of luck, Shall-Alert-M.

@@ -1,4 +1,4 @@
-Nicky | snuffee@gmail.com
-Sam | clarkepearl44@gmail.com
-Sam | sam.clarke@cumulusvfx.com
-Will | will.gammon@cumulusvfx.com
+#nicky | snuffee@gmail.com
+#sam | clarkepearl44@gmail.com
+sam | sam.clarke@cumulusvfx.com
+#will | will.gammon@cumulusvfx.com
