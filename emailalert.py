@@ -5,6 +5,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import datetime
 import os
+import threading
 
 opts, names, emails, template, s, services = ""
 
@@ -16,17 +17,46 @@ services = get_services("services.txt")
 setup_smtp(opts)
 
 def tick():
+	threading.Timer(45.0, tick).start()
+	
+	print("Checking everything.... ")
+	
+	responses = get_responses(services)
 
+	if(times_run > 1): # the first two times it runs are warm ups
+		lenresponses = len(responses), lenpresponses = len(presponses)
+		if(lenresponses > 0) print(lenresponses + " errors! A difference of " + (lenresponses - lenpresponses) + " errors.")
+		
+		if(lenresponses != lenpresponses):
+			print("Given the recent changes, I'll send emails.")		
+			send_emails(responses)
 
-def send_emails(responses, presponses):
+	times_run += 1
+	presponses = responses
+	
+times_run = 0, presponses = [], responses = []
+tick()
+
+def send_emails(responses):
+	nerror = ""
+	
+	status = "Things seem to have improved."
+	if(len(responses) > len(presponses)):
+		status = "Things seem to have gotten worse."
+	
+	responses = sorted(responses, key=get_response_threat_level, reverse=True)
+
 	for response in responses:
-		for presponse in presponses:
-			if response == presponse:
-				continue
 		if(response[1] != 0):
-			error = "Host not found."
+			error = str(response[0]) + " (" + str(reponse[1]) + ") could not be found."
 			if(reponse[1] == 256):
 				error = "Host timed out."
+			
+			nerror += error
+	
+
+def get_response_threat_level(r):
+	return r[2]
 
 def get_responses(services):
 	responses = []
@@ -38,6 +68,7 @@ def get_responses(services):
 
 def get_services(filename):
 	services = []
+
 	with open(filename, mode='r', encoding='utf-8') as services_file:
 		for service in services_file:
 			tservice = {}
@@ -46,9 +77,10 @@ def get_services(filename):
 				tservice.ip = service.split(" | ")[1]
 				tservice.threat_level = service.split(" | ")[2]
 			services.append(tservice)
+
 	return services
 
-def send_alert(s, alert, status, names, emails, template, opts):
+def send_alert(alert, status):
 	for name, email in zip(names, emails):
 		msg = MIMEMultipart()
 		
