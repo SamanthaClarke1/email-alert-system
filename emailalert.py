@@ -12,12 +12,12 @@ from subprocess import call
 
 #### END IMPORTS, ENTER FUNCS ####
 
-def send_emails(responses):
+def send_emails(responses, improved):
 	nerror = ""
 	
-	status = "Things seem to have improved."
-	if(len(responses) > len(presponses)):
-		status = "Things seem to have broken / gone offline / idk im just a robot."
+	status = "Things have gotten worse."
+	if(improved):
+		status = "Things have gotten better."
 	
 	responses = sorted(responses, key=get_response_threat_level, reverse=True)
 
@@ -62,11 +62,11 @@ def send_alert(alert, status):
 
 	msg = MIMEText(message)
 
-	msg.From = opts['LOGIN']['USER']
-	msg.To = ", ".join(emails)
 	msg.Subject = "Automated Alert"
+	msg.From = "An evil cabal of robots"
+	msg.To = "All those who will listen"
 
-	print("Sending message: " + msg.as_string())
+	print("Sending message to " + str(emails)) 
 	s.sendmail(opts['LOGIN']['USER'], emails, msg.as_string())
 
 	del msg # E F F I C I E N C Y
@@ -149,7 +149,7 @@ def tick(firsttime, presponses):
 		
 		if(errresponses != errpresponses):
 			print("Given the recent changes, I'll send emails.\n")		
-			send_emails(responses)
+			send_emails(responses, (errresponses < errpresponses))
 	
 	presponses = responses
 
