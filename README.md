@@ -1,5 +1,5 @@
 # email-alert-system
-Pings multiple servers and alerts via smtp email you if they're down.
+Pings multiple servers and alerts you via smtp if they're down.
 
 Edit the options file to set it up.
 
